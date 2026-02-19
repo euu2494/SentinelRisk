@@ -1,191 +1,219 @@
 # SentinelRisk: AI-Powered Financial Risk Assessment Platform
 
-[![Java 17](https://img.shields.io/badge/Java-17-orange?logo=openjdk)](https://www.oracle.com/java/)
-[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2-green?logo=spring)](https://spring.io/projects/spring-boot)
-[![Docker](https://img.shields.io/badge/Docker-Compose-blue?logo=docker)](https://www.docker.com/)
+[![Java 21](https://img.shields.io/badge/Java-21_LTS-orange?logo=openjdk)](https://www.oracle.com/java/)
+[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2.2-green?logo=spring)](https://spring.io/projects/spring-boot)
+[![Docker](https://img.shields.io/badge/Docker-Multi--Stage-blue?logo=docker)](https://www.docker.com/)
 [![MySQL](https://img.shields.io/badge/Database-MySQL_8.0-00618A?logo=mysql)](https://www.mysql.com/)
 [![Kafka](https://img.shields.io/badge/Event_Driven-Apache_Kafka-black?logo=apachekafka)](https://kafka.apache.org/)
+[![Testing](https://img.shields.io/badge/Tests-JUnit_5_%26_Mockito-blue)](https://junit.org/junit5/)
+[![Quality](https://img.shields.io/badge/Quality-Checkstyle-brightgreen)](https://checkstyle.sourceforge.io/)
 
-> Sistema backend de alto rendimiento para análisis de riesgos financieros, potenciado por IA generativa y diseñado bajo una arquitectura de Defensa en Profundidad.
+> High-performance backend system for financial risk analysis, powered by Generative AI (Google Gemini) and designed under a strict Defense in Depth architecture.
 
 ---
 
-## Arquitectura del Sistema
+## What's New (Latest Architecture Updates)
 
-El sistema sigue una arquitectura por capas estricta, desplegada mediante contenedores Docker orquestados.
+The system has undergone a major architectural refactoring to meet Senior-level engineering standards:
+
+* **Domain-Driven Design (DDD):** Transitioned from a layered architecture to a Package-by-Feature structure (`domain.risk`, `domain.auth`, `domain.user`, `infrastructure`) for high cohesion and low coupling.
+* **Strategy Design Pattern:** Implemented a hybrid analysis engine. The system evaluates risks using a highly optimized **Local Logic Strategy** (keyword-based fast-track) and falls back to an **AI Strategy** (Google Gemini) for deep contextual analysis.
+* **Interface-Driven Messaging:** Kafka producers are now decoupled behind a `MessagePublisher` interface, making the system infrastructure-agnostic.
+* **Advanced Swagger UI:** Integrated **OAuth2 Password Flow** directly into OpenAPI. You can now log in and attach JWT tokens automatically within the Swagger UI. Added Enum support for interactive dropdowns in API requests.
+* **Structured Error Handling:** Implemented a `@RestControllerAdvice` Global Exception Handler. All errors (404, 400, 500) now return a standardized JSON format instead of default white-label pages.
+* **Code Quality & Testing:** Integrated **Checkstyle** for static code analysis and a comprehensive test suite using **JUnit 5 and Mockito** (fully compatible with Java 21 via Byte Buddy).
+
+---
+
+## System Architecture
+
+The system follows a strict layered and domain-driven architecture, deployed via orchestrated Docker containers.
 
 ```mermaid
 graph TD
-    User[Cliente] --> Firewall[Rate Limiter]
+    User[Client] --> Firewall[Rate Limiter]
     Firewall --> Auth[Spring Security]
     Auth --> Controller[REST API]
 
     subgraph Business_Logic
         Controller --> Service[Service Layer]
-        Service --> AI[Gemini AI]
+        Service --> Strategy[Analysis Strategy]
+        Strategy --> Local[Local Engine]
+        Strategy --> AI[Gemini AI Engine]
         Service --> DB[(MySQL 8.0)]
-        Service --> Kafka[Kafka]
+        Service --> Publisher[Message Publisher]
+        Publisher -.-> Kafka[Apache Kafka]
     end
 
     subgraph Security
         Auth -.-> KeyService[Key Rotation]
         KeyService --> Keys[Secrets]
     end
+
 ```
 
 ---
 
-## Características Clave (Security First)
+## Key Features (Security First)
 
-Este proyecto implementa una estrategia de Defense in Depth (Defensa en Profundidad).
+This project implements a Defense in Depth strategy.
 
-### 1. Rate Limiting (Protección Anti-DDoS)
+### 1. Rate Limiting (Anti-DDoS Protection)
 
-Implementación del algoritmo Token Bucket mediante Bucket4j.
+Implementation of the Token Bucket algorithm using Bucket4j.
 
-- Función: Protege la API contra ataques de fuerza bruta y saturación.
-- Política: 10 peticiones por minuto por cliente.
-- Respuesta automática: `429 Too Many Requests`.
+* **Function:** Protects the API against brute-force and saturation attacks.
+* **Policy:** 10 requests per minute per client.
+* **Automatic Response:** `429 Too Many Requests`.
 
----
+### 2. JWT Key Rotation (Zero-Downtime)
 
-### 2. Rotación de Claves JWT (Zero-Downtime)
+SentinelRisk implements automatic secret rotation instead of using a static key.
 
-SentinelRisk implementa rotación automática de secretos en lugar de usar una clave estática.
+* **Algorithm:** HS256.
+* **Rotation:** Every 24 hours.
+* **Seamless Transition:** Active users are not disconnected during the rotation window.
 
-- Algoritmo: HS256.
-- Rotación cada 24 horas.
-- Ventana de transición sin desconexión de usuarios activos.
+### 3. Forensic Auditing (Event-Driven)
 
----
+Immutable log system based on asynchronous events.
 
-### 3. Auditoría Forense (Event-Driven)
+* Logs failed login attempts.
+* Logs unauthorized access.
+* Allows full traceability in the event of security incidents.
 
-Sistema de logs inmutables basado en eventos asíncronos.
+### 4. HTTP Headers Hardening
 
-- Registra intentos de login fallidos.
-- Registra accesos no autorizados.
-- Registra operaciones críticas.
-- Permite trazabilidad completa ante incidentes.
+Application of OWASP recommended headers:
 
----
-
-### 4. Hardening de Cabeceras HTTP
-
-Aplicación de cabeceras OWASP recomendadas:
-
-- `X-Frame-Options: DENY`
-- `X-Content-Type-Options: NOSNIFF`
-- `Strict-Transport-Security (HSTS)`
+* `X-Frame-Options: DENY`
+* `X-Content-Type-Options: NOSNIFF`
+* `Strict-Transport-Security (HSTS)`
 
 ---
 
-## Stack Tecnológico
+## Tech Stack
 
-| Capa | Tecnología | Descripción |
-|------|------------|------------|
-| Lenguaje | Java 17 (LTS) | Records y Pattern Matching |
-| Framework | Spring Boot 3.2 | Core del sistema |
-| Seguridad | Spring Security 6 | JWT dinámico y Stateless |
-| IA | Google Gemini Pro | Análisis financiero |
-| Base de Datos | MySQL 8 + JPA | Persistencia transaccional |
-| Mensajería | Apache Kafka | Eventos críticos |
-| Infraestructura | Docker Compose | Orquestación de contenedores |
-
----
-
-## Instalación y Despliegue
-
-Todo el entorno está completamente dockerizado.
-
-### Prerrequisitos
-
-- Docker Desktop instalado y en ejecución.
+| Layer | Technology | Description |
+| --- | --- | --- |
+| **Language** | Java 21 (LTS) | Records, Pattern Matching, JRE 21.0.8 |
+| **Framework** | Spring Boot 3.2.2 | System core |
+| **Security** | Spring Security 6 | Dynamic & Stateless JWT, OAuth2 |
+| **AI** | Google Gemini 2.5 Flash | Financial & Text Analysis |
+| **Database** | MySQL 8 + Spring Data JPA | Transactional persistence |
+| **Messaging** | Apache Kafka | Critical event broadcasting |
+| **Testing** | JUnit 5 & Mockito | Automated Unit Testing |
+| **Infrastructure** | Docker & Docker Compose | Multi-stage Containerization |
 
 ---
 
-### 1. Clonar el repositorio
+## Installation and Deployment
+
+The environment is fully dockerized. **You do not need Java or Maven installed on your local machine to run the application.**
+
+### Prerequisites
+
+* Docker and Docker Compose installed and running.
+
+### 1. Clone the repository
 
 ```bash
-git clone https://github.com/TU_USUARIO/SentinelRisk.git
+git clone [https://github.com/euu2494/SentinelRisk.git](https://github.com/euu2494/SentinelRisk.git)
 cd SentinelRisk
-```
-
----
-
-### 2. Configurar secretos
-
-Crear un archivo `.env` en la raíz del proyecto:
 
 ```
-GEMINI_API_KEY=tu_clave_de_google_aqui
+
+### 2. Configure Secrets
+
+Create a `.env` file in the root of the project:
+
+```env
+GEMINI_API_KEY=your_google_ai_key_here
+
 ```
 
----
+*(Note: Ensure `.env` is included in your `.gitignore` file).*
 
-### 3. Compilar el proyecto
+### 3. Build and Run (OS-Agnostic Approach)
 
-En Windows (PowerShell):
+The project uses a **Multi-stage Dockerfile**. This means Docker will independently spin up a Maven/Java 21 container to compile the `.jar`, and then transfer it to a lightweight JRE 21 image for execution.
 
-```powershell
-./mvnw clean package "-Dmaven.test.skip=true"
-```
-
----
-
-### 4. Levantar contenedores
+Simply run:
 
 ```bash
 docker-compose up --build
+
 ```
+
+### 4. Local Development Compilation (Optional)
+
+If you prefer to compile the application locally outside of Docker, the project includes Maven wrappers to avoid global installations. Ensure your local compiler is set to **Java 21**.
+
+* **Windows (PowerShell/CMD):**
+```powershell
+./mvnw.cmd clean package -DskipTests
+
+```
+
+
+* **Linux / macOS (Bash):**
+```bash
+./mvnw clean package -DskipTests
+
+```
+
+
+
+### 5. Verification
+
+Wait for the application to start and look for the following log:
+
+```text
+Started SentinelriskApplication in X seconds
+
+```
+
+Access the interactive documentation and OAuth2 login at:
+👉 `http://localhost:8080/swagger-ui.html`
 
 ---
 
-### 5. Verificación
+###  How to Authenticate directly in Swagger
+Thanks to the **OAuth2 Password Flow** integration, you no longer need to manually copy and paste JWT tokens.
 
-Esperar el log:
+1. Click the green **`Authorize`** button at the top right of the Swagger UI.
+2. Enter a valid `username` and `password` (you can create a user via `POST /api/auth/register` first).
+3. Click **Authorize**. Swagger will automatically fetch the JWT and inject it into the headers of all subsequent secured requests!
 
-```
-Started SentinelriskApplication
-```
+## API Documentation
 
-Acceder a la documentación:
+### Authentication
 
-```
-http://localhost:8080/swagger-ui.html
-```
+* `POST /api/auth/register` - Register a new user.
+* `POST /api/auth/login` - Authenticate and retrieve JWT.
 
----
+### Risk Management
 
-## Documentación de API
+* `GET /api/risks` - Retrieve all risks (supports filtering via Dropdowns).
+* `POST /api/risks` - Create and automatically analyze a new risk.
+* `PATCH /api/risks/{id}/status-priority` - Quick update using Swagger Enums.
+* `POST /api/risks/analyze` - Standalone AI analysis test.
 
-### Autenticación
-
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-
----
-
-### Análisis de Riesgo
-
-- `POST /api/risk/analyze` (Requiere Bearer Token)
-
-**Input:** JSON con ingresos, deudas e historial.  
-**Output:** Análisis IA + Nivel de Riesgo (BAJO / MEDIO / ALTO).
-
-Si el riesgo es ALTO, se dispara un evento asíncrono a Kafka.
+*Note: All Risk endpoints require a Bearer Token. If a risk priority hits `CRITICAL`, an asynchronous event is instantly published to the Kafka `risk-alerts` topic.*
 
 ---
 
 ## Roadmap
 
-- [ ] Dashboard con Grafana y Prometheus.
-- [ ] Servicio de notificaciones (Email/SMS).
-- [ ] Tests de carga con JMeter.
-- [ ] Métricas avanzadas con Micrometer.
+* [ ] Grafana and Prometheus observability dashboard.
+* [ ] Notification Service Integration (Email/Slack via Kafka Consumer).
+* [ ] Load testing with Apache JMeter.
+* [ ] BDD (Behavior-Driven Development) integration with Cucumber.
 
 ---
 
-## Autor
+## Author
 
-Desarrollado por Eugenio Garcia Calvo.
+Developed by **Eugenio Garcia Calvo**.
+
+```
